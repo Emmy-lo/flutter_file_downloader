@@ -130,6 +130,7 @@ class FileDownloader {
     required final String content,
     required final String fileName,
     required final String extension,
+    final NotificationType notificationType = NotificationType.progressOnly,
     final String? subPath,
     final DownloadDestinations downloadDestination =
         DownloadDestinations.publicDownloads,
@@ -142,6 +143,7 @@ class FileDownloader {
       fileName: fileName,
       extension: extension,
       subPath: subPath,
+
       downloadDestination: downloadDestination,
       onProgress: onProgress,
       onCompleted: onCompleted,
@@ -300,6 +302,7 @@ class FileDownloader {
         DownloadDestinations.publicDownloads,
     final OnProgress? onProgress,
     final OnDownloadCompleted? onCompleted,
+    final NotificationType notificationType = NotificationType.progressOnly,
     final OnDownloadError? onError,
   }) async {
     try {
@@ -308,6 +311,7 @@ class FileDownloader {
         name: fileName.trim().isEmpty ? 'file-${_taskID + 1}' : fileName.trim(),
         subPath: subPath,
         extension: extension,
+        notificationType: notificationType,
         downloadDestination: downloadDestination,
         callbacks: DownloadCallbacks(
           onProgress: onProgress,
