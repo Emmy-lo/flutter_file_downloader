@@ -8,9 +8,13 @@ import 'package:flutter_file_downloader/src/download_file_request.dart';
 import 'download_callbacks.dart';
 
 part 'download_destinations.dart';
+
 part 'download_request_method_type.dart';
+
 part 'download_service.dart';
+
 part 'download_task.dart';
+
 part 'notification_types.dart';
 
 ///FlutterFileDownloader core file that handles native calls
@@ -77,8 +81,7 @@ class FileDownloader {
     final String? name,
     final String? subPath,
     final NotificationType notificationType = NotificationType.progressOnly,
-    final DownloadDestinations downloadDestination =
-        DownloadDestinations.publicDownloads,
+    final DownloadDestinations downloadDestination = DownloadDestinations.publicDownloads,
     final DownloadService downloadService = DownloadService.downloadManager,
     final DownloadRequestMethodType methodType = DownloadRequestMethodType.get,
     final Map<String, String> headers = const {},
@@ -112,9 +115,7 @@ class FileDownloader {
   /// returns [File] if the download succeed
   /// returns [null] if the download fail
   static Future<File?> simpleDownload(final String url) async {
-    return FileDownloader()
-        ._downloadFile(url: url)
-        .catchError((error) => throw error);
+    return FileDownloader()._downloadFile(url: url).catchError((error) => throw error);
   }
 
   ///Writes content into a file
@@ -132,18 +133,18 @@ class FileDownloader {
     required final String extension,
     final NotificationType notificationType = NotificationType.progressOnly,
     final String? subPath,
-    final DownloadDestinations downloadDestination =
-        DownloadDestinations.publicDownloads,
+    final DownloadDestinations downloadDestination = DownloadDestinations.publicDownloads,
     final OnProgress? onProgress,
     final OnDownloadCompleted? onCompleted,
     final OnDownloadError? onError,
+    final OnDownloadRequestIdReceived? onDownloadRequestIdReceived,
   }) async {
     return FileDownloader()._writeFile(
       content: content,
       fileName: fileName,
       extension: extension,
       subPath: subPath,
-
+      onDownloadRequestIdReceived: onDownloadRequestIdReceived,
       downloadDestination: downloadDestination,
       onProgress: onProgress,
       onCompleted: onCompleted,
@@ -164,8 +165,7 @@ class FileDownloader {
   static Future<List<File?>> downloadFiles({
     required final List<String> urls,
     final NotificationType notificationType = NotificationType.progressOnly,
-    final DownloadDestinations downloadDestination =
-        DownloadDestinations.publicDownloads,
+    final DownloadDestinations downloadDestination = DownloadDestinations.publicDownloads,
     final bool isParallel = true,
     final VoidCallback? onAllDownloaded,
     final Map<String, String> headers = const {},
@@ -230,8 +230,7 @@ class FileDownloader {
   static Future<List<File?>> downloadFilesWithCustomHeaders({
     required final List<DownloadFileRequest> requests,
     final NotificationType notificationType = NotificationType.progressOnly,
-    final DownloadDestinations downloadDestination =
-        DownloadDestinations.publicDownloads,
+    final DownloadDestinations downloadDestination = DownloadDestinations.publicDownloads,
     final bool isParallel = true,
     final VoidCallback? onAllDownloaded,
   }) async {
@@ -298,12 +297,12 @@ class FileDownloader {
     required final String fileName,
     required final String extension,
     final String? subPath,
-    final DownloadDestinations downloadDestination =
-        DownloadDestinations.publicDownloads,
+    final DownloadDestinations downloadDestination = DownloadDestinations.publicDownloads,
     final OnProgress? onProgress,
     final OnDownloadCompleted? onCompleted,
     final NotificationType notificationType = NotificationType.progressOnly,
     final OnDownloadError? onError,
+    final OnDownloadRequestIdReceived? onDownloadRequestIdReceived,
   }) async {
     try {
       final task = _PluginTask(
@@ -314,10 +313,10 @@ class FileDownloader {
         notificationType: notificationType,
         downloadDestination: downloadDestination,
         callbacks: DownloadCallbacks(
-          onProgress: onProgress,
-          onDownloadCompleted: onCompleted,
-          onDownloadError: onError,
-        ),
+            onProgress: onProgress,
+            onDownloadCompleted: onCompleted,
+            onDownloadError: onError,
+            onDownloadRequestIdReceived: onDownloadRequestIdReceived),
       );
       task.key = (++_taskID);
       _queueTask(task);
@@ -347,8 +346,7 @@ class FileDownloader {
     final String? name,
     final String? subPath,
     final NotificationType notificationType = NotificationType.all,
-    final DownloadDestinations downloadDestination =
-        DownloadDestinations.publicDownloads,
+    final DownloadDestinations downloadDestination = DownloadDestinations.publicDownloads,
     final DownloadService downloadService = DownloadService.downloadManager,
     final DownloadRequestMethodType methodType = DownloadRequestMethodType.get,
     final Map<String, String> headers = const {},
@@ -358,13 +356,11 @@ class FileDownloader {
     final OnDownloadError? onDownloadError,
   }) async {
     if (!Platform.isAndroid) {
-      debugPrint(
-          '[flutter_file_downloader] this plugin currently supports only android platform');
+      debugPrint('[flutter_file_downloader] this plugin currently supports only android platform');
       return Future.value(null);
     }
     if (!(Uri.tryParse(url)?.hasAbsolutePath ?? false)) {
-      final error =
-          'URL is not valid, "$url" is not a valid url, please double check it then try again';
+      final error = 'URL is not valid, "$url" is not a valid url, please double check it then try again';
       if (onDownloadError != null) {
         onDownloadError.call(error);
         return null;
@@ -413,37 +409,25 @@ class FileDownloader {
       case 'onIDReceived':
         _log('File ${call.arguments['url']} got the id $id');
         _downloadTasks[key]?.id = id;
-        _downloadTasks[key]
-            ?.callbacks
-            .onDownloadRequestIdReceived
-            ?.call(int.parse(id));
+        _downloadTasks[key]?.callbacks.onDownloadRequestIdReceived?.call(int.parse(id));
         break;
       case 'onProgress':
-        _log(
-            'File ${call.arguments['name']} is ${call.arguments['progress']}% done');
+        _log('File ${call.arguments['name']} is ${call.arguments['progress']}% done');
         _downloadTasks[key]?.callbacks.onProgress?.call(
               call.arguments['name'],
               call.arguments['progress'],
             );
         break;
       case 'onDownloadCompleted':
-        _log(
-            'Task ${call.arguments['key']} is downloaded in: ${call.arguments['path']}');
+        _log('Task ${call.arguments['key']} is downloaded in: ${call.arguments['path']}');
         _downloadTasks[key]?.notifyCompleted(true);
-        _downloadTasks[key]
-            ?.callbacks
-            .onDownloadCompleted
-            ?.call(call.arguments['path']);
+        _downloadTasks[key]?.callbacks.onDownloadCompleted?.call(call.arguments['path']);
         _downloadTasks.remove(key);
         break;
       case 'onDownloadError':
-        _log(
-            'Task ${call.arguments['key']} failed to download: ${call.arguments['error']}');
+        _log('Task ${call.arguments['key']} failed to download: ${call.arguments['error']}');
         _downloadTasks[key]?.notifyCompleted(false);
-        _downloadTasks[key]
-            ?.callbacks
-            .onDownloadError
-            ?.call(call.arguments['error']);
+        _downloadTasks[key]?.callbacks.onDownloadError?.call(call.arguments['error']);
         _downloadTasks.remove(key);
         break;
       default:
@@ -461,14 +445,12 @@ class FileDownloader {
       _log('Start downloading task no ${task.key}');
       _processingDownloads[_taskID] = task;
       task.waitDownload().whenComplete(() {
-        _log(
-            'Download task ${task.key} is done, checking for waiting tasks...');
+        _log('Download task ${task.key} is done, checking for waiting tasks...');
         _processingDownloads.remove(task.key);
         _startWaitingTask();
       });
     } else {
-      _log(
-          'Task ${task.key} is queued because maximum parallel download is reached');
+      _log('Task ${task.key} is queued because maximum parallel download is reached');
       _waitingDownloads.add(task);
     }
   }
